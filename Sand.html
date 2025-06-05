@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+    <title>Website for Bakas only</title>
+    <head>
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+        <h1 id="welcome">Welcome</h1>
+        <p style="text-align:center;">
+        <a id="youtube" href="https://www.youtube.com" target="_bank">
+            Youtube
+        </a></p>
+        <p>This is a 
+            <span style="border:1px solid black">test</span>
+             sentence
+        </p>
+
+        <div class="container">
+            <div style="border:1px solid black; background-color:tomato;">
+                <h1>Header 1</h1>
+                <p>Hello block 1</p>
+            </div>
+            <div style="border:1px solid black; background-color:chartreuse;;">
+                <h1>Header 2</h1>
+                <p>Hello block 2</p>
+            </div>
+            <div style="border:1px solid black; background-color:aqua;">
+                <h1>Header 3</h1>
+                <p>Hello block 3</p>
+            </div>
+        </div>
+        <div style="text-align: center; padding: 25px;">
+            <button onclick="increaseSize()" style="width: 150px; height: 100px; font-size: 150%; margin: 10px;">Increase Size</button>
+            <button onclick="decreaseSize()" style="width: 150px; height: 100px; font-size: 150%; margin: 10px;">Decrease Size</button>
+            <br>
+            <button onclick="reset()" style="width: 150px; height: 100px; font-size: 150%; margin: 10px;">Reset</button>
+            <p id="sizeID" style="font-size: 150%;">Size: 1</p>
+            <p id="modeID" style="font-size: 150%;">Mode: Sand (Space to change)</p>
+        </div>
+        <div style="text-align: center; padding: 15px;">
+            <canvas id="mycanv" width="750" height="750" style="border: 10px solid black;"></canvas>
+            <script>
+                class Block {
+                    constructor(x, y, brick) {
+                        this.x = x;
+                        this.y = y;
+                        this.speed = .1;
+                        this.maxSpeed = 3;
+                        this.belowAvailable = true;
+                        this.isBrick = brick;
+                    }
+
+                    //Updates position and draws block for each frame
+                    update() {
+                        if(!this.isBrick) {
+                            this.belowAvailable = true;
+                            let blocked = false;
+                            //Check if hits ground
+                            if(Math.floor(this.y) + 1 >= gridDiv) {
+                                this.belowAvailable = false;
+                                this.y = gridDiv-1;
+                                this.speed = 0;
+                                blocked = true;
+                            }
+
+                            //Check potential collisions
+                            let nextY = this.y + this.speed * 1.05;
+                            for(let yVal = Math.floor(this.y+1);
+                                yVal <= Math.floor(nextY); yVal++) {
+                                for(let i = 0; i < blocks.length; i++) {
+                                    if(blocks[i]===this) continue;
+                                    if(blocks[i].x === this.x && blocks[i].y === yVal) {
+                                        this.y = yVal-1;
+                                        this.speed = 0;
+                                        blocked = true;
+                                        break;
+                                    } 
+                                }
+                                if(blocked) break;
+                            }
+                            
+
+                            //Increase speed and position
+                            if(!blocked) {
+                                if(this.speed < this.maxSpeed) {
+                                    this.speed *= 1.05;
+                                }
+                                this.y += this.speed;
+                            } else {
+                                this.y = Math.floor(this.y);
+                            }
+
+                            //Checks to see if it can fall again (Avoids floating sand)
+                            let canFall = true;
+                            for(let i = 0; i < blocks.length; i++) {
+                                if(blocks[i] === this) continue;
+                                if(blocks[i].x === this.x && 
+                                blocks[i].y === Math.floor(this.y) + 1) {
+                                    canFall = false;
+                                    break;
+                                }
+                            }
+
+                            //Allows it to fall again
+                            if(this.speed === 0 && canFall && Math.floor(this.y + 1 < gridDiv)) {
+                                this.speed = .1;
+                            }
+                            ctx.fillStyle = "white";
+                        }
+                        else {
+                            this.speed = 0;
+                            ctx.fillStyle = "black";
+                        }
+
+                        //Draw box
+                        const boxWidth = width/gridDiv;
+                        const boxHeight = height/gridDiv;
+                        ctx.beginPath();
+                        ctx.fillRect(this.x*boxWidth + 1, this.y*boxHeight + 1, 
+                        boxWidth - 2, boxHeight - 2);
+                    }
+                }
+                
+                //Draw canvas
+                const canvas = document.getElementById("mycanv");
+                const ctx = canvas.getContext("2d");
+                const width = canvas.width;
+                const height = canvas.height;
+                //Defines how many divisions there are (IMPORTANT)
+                const gridDiv = 45;
+                let cooldown = 0;
+
+                function update() {
+                    //Background
+                    ctx.fillStyle = "rgb(142, 125, 125)";
+                    ctx.fillRect(0, 0, width, height);
+
+                    //Grid drawing
+                    for(let i = 0; i < gridDiv; i++) {
+                        ctx.beginPath();
+                        ctx.lineWidth = 3;
+                        ctx.moveTo(width/gridDiv * i, 0);
+                        ctx.lineTo(width/gridDiv * i, height);
+                        ctx.moveTo(0, height/gridDiv * i);
+                        ctx.lineTo(width, height/gridDiv * i);
+                        ctx.stroke();
+                    }
+
+                    //Updates ALL blocks and sorts to update bottom to top
+                    blocks.sort((a, b) => b.y - a.y);
+                    for(let i = 0; i < blocks.length; i++) {
+                        blocks[i].update();
+                    }
+
+                    //Adds a block where you click
+                    if(cooldown === 0 && mouseDown && blockMode) {
+                        let xV = Math.floor(mouseX/width * gridDiv);
+                        let yV = Math.floor(mouseY/height * gridDiv);
+                        addBlock(xV, yV);
+                        let r;
+                        for(let i = 1; i < size; i++) {
+                            for(let offs = 0; offs < 4; offs++) {
+                                r = Math.random() * size;
+                                if(r > i) {
+                                    //Randomize horizontal and vertical offset
+                                    let horizontal = Math.round(Math.random());
+                                    let vertical = Math.round(Math.random());
+                                    if(horizontal === 0) horizontal = -1;
+                                    if(vertical === 0) vertical = -1;
+                                    let offset1 = Math.round(Math.random() * i);
+                                    let offset2 = Math.round(Math.random() * i);
+                                    addBlock(xV + horizontal * offset1, yV + vertical * offset2);
+                                }
+                            }
+                        }
+                        cooldown = 5;
+                    }
+                    else if(cooldown === 0 && mouseDown && !blockMode) {
+                        let xV = Math.floor(mouseX/width * gridDiv);
+                        let yV = Math.floor(mouseY/height * gridDiv);
+                        addBrick(xV, yV);
+                    }
+                    if(cooldown != 0) cooldown--;
+                    
+                    requestAnimationFrame(update);
+                }
+
+                const blocks = [];
+
+                //Keeps track of mouse information
+                let mouseDown = false;
+                let mouseX = 0;
+                let mouseY = 0;
+                canvas.addEventListener("mousemove", e => {
+                        mouseX = e.offsetX;
+                        mouseY = e.offsetY;
+                }
+                )
+                canvas.addEventListener("mousedown", e => {
+                    mouseDown = true;
+                })
+                canvas.addEventListener("mouseup", e => {
+                    mouseDown = false;
+                })
+                document.addEventListener("keypress", e => {
+                    if(e.key === " ") {
+                        if(blockMode) {
+                            blockMode = false;
+                            document.getElementById("modeID").innerHTML = "Mode: Block (Space to change)";
+                        }
+                        else {
+                            blockMode = true;
+                            document.getElementById("modeID").innerHTML = "Mode: Sand (Space to change)";
+                        }
+                    }
+                })
+
+                let blockMode = true;
+                //Adds a block to the array
+                function addBlock(xV, yV) {
+                    const x = xV;
+                    const y = yV;
+                    let valid = true;
+                    for(let i = 0; i < blocks.length; i++) {
+                        if(blocks[i].x === x && blocks[i].y === y) {
+                            valid = false;
+                        }
+                    }
+                    if(valid)
+                        blocks.push(new Block(x, y, 0));
+                }
+
+                //Adds a brick to the grid
+                function addBrick(xV, yV) {
+                    const x = xV;
+                    const y = yV;
+                    for(let i = 0; i < blocks.length; i++) {
+                        if(blocks[i].x === x && blocks[i].y === y) {
+                            blocks.splice(i, 1);
+                        }
+                    }
+                    blocks.push(new Block(x, y, 1));
+                }
+
+                let size = 1;
+                function increaseSize() {
+                    if(size < 10) size++;
+                    document.getElementById("sizeID").innerHTML = "Size: " + size;
+                }
+                function decreaseSize() {
+                    if(size > 1) size--;
+                    document.getElementById("sizeID").innerHTML = "Size: " + size;
+
+                }
+                function reset() {
+                    for(let i = blocks.length - 1; i >= 0; i--) {
+                        blocks.splice(i, 1);
+                    }
+                }
+
+                update();
+            </script>
+        
+            
+        </div>
+    </body>
+    
+</html>
