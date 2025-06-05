@@ -538,6 +538,12 @@
                 canvas.addEventListener("mouseup", e => {
                     mouseDown = 0;
                 })
+                canvas.addEventListener("touchstart", e => {
+                    mouseDown = 1;
+                })
+                canvas.addEventListener("touchend", e => {
+                    mouseDown = 0;
+                })
                 document.addEventListener("keydown", e => {
                     if(e.key === 'p') {
                         paused = !paused;
